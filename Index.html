@@ -1,0 +1,1832 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Game : Ratio - Matematika Kelas 6</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-title: 'Fredoka', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+        }
+        body {
+            font-family: var(--font-body);
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .font-display {
+            font-family: var(--font-title);
+        }
+
+        /* Pola Bendera Balap Kotak-Kotak */
+        .checkered-bg {
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #ffffff;
+        }
+
+        .finish-line-strip {
+            background-image: 
+                linear-gradient(45deg, #000 25%, transparent 25%), 
+                linear-gradient(-45deg, #000 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #000 75%), 
+                linear-gradient(-45deg, transparent 75%, #000 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+            background-color: #fff;
+        }
+
+        /* Pembatas Lintasan Merah-Putih (Kerb) */
+        .kerb-strip {
+            background: repeating-linear-gradient(
+                90deg,
+                #ef4444,
+                #ef4444 20px,
+                #ffffff 20px,
+                #ffffff 40px
+            );
+        }
+
+        /* Tekstur Aspal Sirkuit */
+        .asphalt-track {
+            background: linear-gradient(180deg, #334155 0%, #1e293b 50%, #334155 100%);
+            box-shadow: inset 0 4px 15px rgba(0,0,0,0.6);
+        }
+
+        /* Transisi Pergerakan Mobil */
+        .car-token {
+            transition: left 0.65s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s ease;
+        }
+
+        /* Animasi Mesin Mobil Menyala */
+        @keyframes engineVibrate {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+        }
+        .car-idle {
+            animation: engineVibrate 0.25s infinite ease-in-out;
+        }
+
+        /* Animasi Saat Mobil Melaju Maju */
+        @keyframes carBoost {
+            0% { transform: scale(1) rotate(0deg); }
+            30% { transform: scale(1.14) rotate(-4deg); }
+            70% { transform: scale(1.08) rotate(2deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .car-boost {
+            animation: carBoost 0.65s ease-out;
+        }
+
+        /* Animasi Getar Saat Jawaban Salah */
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+        .shake-error {
+            animation: wrongShake 0.45s ease-in-out;
+        }
+
+        /* Animasi Penonton di Tribun */
+        @keyframes crowdWave {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-4px) scale(1.06); }
+        }
+        .spectator {
+            animation: crowdWave 0.9s infinite ease-in-out;
+        }
+
+        /* Scrollbar Rapi untuk Panel Soal */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5);
+            border-radius: 9999px;
+        }
+
+        /* Efek Tombol Game 3D */
+        .btn-game {
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+        }
+        .btn-game:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- KANVAS CONFETTI SAAT JUARA -->
+    <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- ========================================== -->
+    <!-- 1. HALAMAN PEMBUKA (START MENU SCREEN)     -->
+    <!-- ========================================== -->
+    <div id="startScreen" class="min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-6 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 relative overflow-y-auto">
+        <!-- Garis Bendera Balap Atas & Bawah -->
+        <div class="w-full h-4 checkered-bg fixed top-0 left-0 z-10 shadow-md"></div>
+        <div class="w-full h-4 checkered-bg fixed bottom-0 left-0 z-10 shadow-md"></div>
+
+        <div class="max-w-6xl w-full bg-slate-800/95 backdrop-blur-md border-2 border-slate-700 rounded-3xl shadow-2xl p-4 md:p-7 my-6 z-20">
+            
+            <!-- Judul Game -->
+            <div class="text-center mb-4">
+                <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold mb-1.5">
+                    <span>🏁</span> MEDIA PEMBELAJARAN MATEMATIKA KELAS 6 SD <span>🏁</span>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 drop-shadow-sm">
+                    RACE GAME : RATIO
+                </h1>
+                <p class="text-slate-300 text-xs md:text-sm mt-1">
+                    Adu Cepat & Tepat Menyelesaikan 5 Misi Soal Rasio Menuju Garis Finish!
+                </p>
+
+                <!-- Tombol Langsung Mulai di Atas -->
+                <div class="mt-3">
+                    <button type="button" onclick="startGame()" 
+                        class="btn-game py-2.5 px-7 rounded-xl bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-sm md:text-base tracking-wider uppercase inline-flex items-center justify-center gap-2 cursor-pointer border-2 border-emerald-300 shadow-lg">
+                        <span>🚦</span> LANGSUNG MULAI BALAPAN (START)
+                    </button>
+                </div>
+            </div>
+
+            <!-- PILIHAN MODE PERMAINAN: SENDIRI, DUEL, ATAU BERKELOMPOK -->
+            <div class="mb-5 bg-slate-900/90 border-2 border-indigo-500/40 rounded-2xl p-3.5 shadow-lg">
+                <div class="text-center mb-2.5">
+                    <span class="text-xs md:text-sm font-extrabold uppercase tracking-wider text-indigo-300">
+                        🎮 Pilih Mode Permainan (Sendiri atau Berkelompok)
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <!-- Mode 1: Main Sendiri (Lawan Bot) -->
+                    <button type="button" id="modeBtnSolo" onclick="selectGameMode('solo')"
+                        class="p-3 rounded-xl border-2 text-left transition flex items-center gap-3 cursor-pointer bg-slate-800/80 border-slate-700 hover:border-amber-400/60">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-2xl shrink-0">
+                            🧑‍💻
+                        </div>
+                        <div>
+                            <div class="font-extrabold text-white text-sm">Main Sendiri</div>
+                            <div class="text-[11px] text-slate-300 leading-tight">1 Siswa vs Mobil Bot Komputer</div>
+                        </div>
+                    </button>
+
+                    <!-- Mode 2: Duel 2 Pemain -->
+                    <button type="button" id="modeBtnDuel" onclick="selectGameMode('duel')"
+                        class="p-3 rounded-xl border-2 text-left transition flex items-center gap-3 cursor-pointer bg-indigo-600/30 border-indigo-400 shadow-md">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-2xl shrink-0">
+                            ⚔️
+                        </div>
+                        <div>
+                            <div class="font-extrabold text-white text-sm">Duel 2 Pemain</div>
+                            <div class="text-[11px] text-slate-300 leading-tight">2 Siswa bertanding 1 lawan 1</div>
+                        </div>
+                    </button>
+
+                    <!-- Mode 3: Berkelompok (Tim 1 vs Tim 2) -->
+                    <button type="button" id="modeBtnGroup" onclick="selectGameMode('group')"
+                        class="p-3 rounded-xl border-2 text-left transition flex items-center gap-3 cursor-pointer bg-slate-800/80 border-slate-700 hover:border-emerald-400/60">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-2xl shrink-0">
+                            👥
+                        </div>
+                        <div>
+                            <div class="font-extrabold text-white text-sm">Berkelompok (Tim)</div>
+                            <div class="text-[11px] text-slate-300 leading-tight">Kelompok 1 vs Kelompok 2</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid Identitas Pemain 1, Aturan Bermain, dan Pemain 2 -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                
+                <!-- IDENTITAS & KENDARAAN PEMAIN 1 -->
+                <div class="lg:col-span-4 bg-gradient-to-b from-blue-950/80 to-slate-900/90 border-2 border-blue-500/50 rounded-2xl p-4 flex flex-col justify-between shadow-lg">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-blue-500/30 pb-2.5 mb-3">
+                            <span id="p1SetupBadge" class="bg-blue-600 text-white text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">Pemain 1 (Kiri)</span>
+                            <span class="text-blue-400 font-bold text-xs">Jalur Car 1 (Atas)</span>
+                        </div>
+
+                        <label id="p1NameLabel" class="block text-xs font-bold uppercase tracking-wider text-blue-300 mb-1">Nama Pemain 1</label>
+                        <input id="p1NameInput" type="text" maxlength="18" value="Pemain 1" placeholder="Masukkan nama..." 
+                            class="w-full px-3.5 py-2 rounded-xl bg-slate-800 border-2 border-blue-500/40 text-white font-bold focus:outline-none focus:border-blue-400 mb-3 text-sm">
+
+                        <!-- Jumlah Anggota Kelompok 1 (Muncul saat mode Berkelompok) -->
+                        <div id="p1GroupConfig" class="hidden mb-3 bg-blue-900/40 border border-blue-500/40 rounded-xl p-2.5">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-200 mb-1">
+                                👥 Jumlah Anggota Kelompok 1
+                            </label>
+                            <select id="p1MemberCount" class="w-full px-3 py-1.5 rounded-lg bg-slate-800 border border-blue-400/50 text-white font-bold text-xs focus:outline-none">
+                                <option value="2">2 Siswa per Kelompok</option>
+                                <option value="3">3 Siswa per Kelompok</option>
+                                <option value="4">4 Siswa per Kelompok</option>
+                                <option value="5" selected>5 Siswa (1 Siswa = 1 Soal)</option>
+                                <option value="6">6 Siswa per Kelompok</option>
+                            </select>
+                        </div>
+
+                        <label class="block text-xs font-bold uppercase tracking-wider text-blue-300 mb-2">Pilih Kendaraan Car 1</label>
+                        <div id="p1VehicleGrid" class="grid grid-cols-3 gap-2"></div>
+                    </div>
+
+                    <div class="mt-3 pt-2.5 border-t border-slate-700/80 flex items-center justify-between text-xs text-slate-300">
+                        <span>Kendaraan:</span>
+                        <span id="p1SelectedVehicleLabel" class="font-bold text-blue-400">Jet F1 Biru</span>
+                    </div>
+                </div>
+
+                <!-- ATURAN BERMAIN -->
+                <div class="lg:col-span-4 bg-slate-900/90 border-2 border-amber-500/40 rounded-2xl p-4 flex flex-col justify-between shadow-lg">
+                    <div>
+                        <div class="flex items-center justify-center gap-2 border-b border-amber-500/30 pb-2.5 mb-3">
+                            <span class="text-lg">📜</span>
+                            <h2 class="text-base font-bold text-amber-400 tracking-wide uppercase">Aturan Bermain</h2>
+                        </div>
+
+                        <ul class="space-y-2 text-xs text-slate-200 leading-relaxed">
+                            <li class="flex items-start gap-2">
+                                <span class="bg-amber-500 text-slate-950 font-extrabold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-xs mt-0.5">1</span>
+                                <span id="ruleTextMode">Pilih mode <strong>Main Sendiri (vs Bot)</strong>, <strong>Duel 2 Pemain</strong>, atau <strong>Berkelompok</strong>.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="bg-amber-500 text-slate-950 font-extrabold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-xs mt-0.5">2</span>
+                                <span>Selesaikan <strong>5 misi soal Rasio</strong> (Menentukan Rasio, Menyederhanakan, Kesamaan Rasio, & Penerapan Rasio).</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="bg-amber-500 text-slate-950 font-extrabold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-xs mt-0.5">3</span>
+                                <span><strong>Jawaban Benar:</strong> Mobil maju <strong>+1 langkah</strong> menuju garis FINISH dan mendapat +20 poin.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="bg-amber-500 text-slate-950 font-extrabold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-xs mt-0.5">4</span>
+                                <span><strong>Jawaban Salah:</strong> Mobil <strong>tidak berpindah tempat</strong> dan soal diacak kembali.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="bg-amber-500 text-slate-950 font-extrabold rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-xs mt-0.5">5</span>
+                                <span>Pemain/Kelompok yang pertama mencapai <strong>Garis Finish</strong> adalah Juaranya! 🏆</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="mt-4 pt-2.5 border-t border-slate-800 text-center">
+                        <div class="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 rounded-lg">
+                            <span>📚</span> 40 Database Soal Rasio Kelas 6 (Diacak)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IDENTITAS & KENDARAAN PEMAIN 2 -->
+                <div class="lg:col-span-4 bg-gradient-to-b from-rose-950/80 to-slate-900/90 border-2 border-rose-500/50 rounded-2xl p-4 flex flex-col justify-between shadow-lg">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-rose-500/30 pb-2.5 mb-3">
+                            <span id="p2SetupBadge" class="bg-rose-600 text-white text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">Pemain 2 (Kanan)</span>
+                            <span class="text-rose-400 font-bold text-xs">Jalur Car 2 (Bawah)</span>
+                        </div>
+
+                        <label id="p2NameLabel" class="block text-xs font-bold uppercase tracking-wider text-rose-300 mb-1">Nama Pemain 2</label>
+                        <input id="p2NameInput" type="text" maxlength="18" value="Pemain 2" placeholder="Masukkan nama..." 
+                            class="w-full px-3.5 py-2 rounded-xl bg-slate-800 border-2 border-rose-500/40 text-white font-bold focus:outline-none focus:border-rose-400 mb-3 text-sm">
+
+                        <!-- Kecepatan Bot (Muncul saat mode Main Sendiri) -->
+                        <div id="p2BotConfig" class="hidden mb-3 bg-amber-950/50 border border-amber-500/40 rounded-xl p-2.5">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-amber-300 mb-1">
+                                🤖 Kecepatan Mobil Bot Komputer
+                            </label>
+                            <select id="botDifficultySelect" class="w-full px-3 py-1.5 rounded-lg bg-slate-800 border border-amber-400/50 text-white font-bold text-xs focus:outline-none">
+                                <option value="easy">Santai (Bot menjawab tiap 11 detik)</option>
+                                <option value="normal" selected>Sedang (Bot menjawab tiap 8 detik)</option>
+                                <option value="hard">Cepat (Bot menjawab tiap 5.5 detik)</option>
+                            </select>
+                        </div>
+
+                        <!-- Jumlah Anggota Kelompok 2 (Muncul saat mode Berkelompok) -->
+                        <div id="p2GroupConfig" class="hidden mb-3 bg-rose-900/40 border border-rose-500/40 rounded-xl p-2.5">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-rose-200 mb-1">
+                                👥 Jumlah Anggota Kelompok 2
+                            </label>
+                            <select id="p2MemberCount" class="w-full px-3 py-1.5 rounded-lg bg-slate-800 border border-rose-400/50 text-white font-bold text-xs focus:outline-none">
+                                <option value="2">2 Siswa per Kelompok</option>
+                                <option value="3">3 Siswa per Kelompok</option>
+                                <option value="4">4 Siswa per Kelompok</option>
+                                <option value="5" selected>5 Siswa (1 Siswa = 1 Soal)</option>
+                                <option value="6">6 Siswa per Kelompok</option>
+                            </select>
+                        </div>
+
+                        <label class="block text-xs font-bold uppercase tracking-wider text-rose-300 mb-2">Pilih Kendaraan Car 2</label>
+                        <div id="p2VehicleGrid" class="grid grid-cols-3 gap-2"></div>
+                    </div>
+
+                    <div class="mt-3 pt-2.5 border-t border-slate-700/80 flex items-center justify-between text-xs text-slate-300">
+                        <span>Kendaraan:</span>
+                        <span id="p2SelectedVehicleLabel" class="font-bold text-rose-400">Supercar Merah</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Tombol Start Bawah -->
+            <div class="mt-6 flex items-center justify-center">
+                <button type="button" onclick="startGame()" 
+                    class="btn-game w-full sm:w-auto min-w-[280px] py-3.5 px-10 rounded-2xl bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-lg md:text-xl tracking-wider uppercase flex items-center justify-center gap-3 cursor-pointer border-2 border-emerald-300 shadow-xl">
+                    <span>🚦</span> START BALAPAN SEKARANG!
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. HALAMAN BALAPAN (RACE GAME SCREEN)      -->
+    <!--    SESUAI SKETSA:                          -->
+    <!--    - Atas: Papan Skor Pemain 1 & Pemain 2  -->
+    <!--    - Tengah (1/2 Layar): Lintasan Car 1 &  -->
+    <!--      Car 2 menuju garis FINISH di kanan    -->
+    <!--    - Bawah (2 Kolom @ 1/4 Layar):          -->
+    <!--      Soal Pemain 1 & Soal Pemain 2         -->
+    <!--      dengan susunan tombol A-B dan C-D     -->
+    <!-- ========================================== -->
+    <div id="gameScreen" class="hidden h-screen w-screen overflow-hidden flex flex-col bg-slate-950 select-none">
+        
+        <!-- BAGIAN PALING ATAS: PAPAN SKOR -->
+        <header class="shrink-0 bg-slate-900 border-b-2 border-cyan-500/60 px-2 md:px-6 py-1.5 flex flex-col gap-1 z-30 shadow-lg">
+            
+            <!-- Baris Info & Navigasi Mini -->
+            <div class="flex items-center justify-between text-[11px] text-slate-300 border-b border-slate-800 pb-1">
+                <div class="flex items-center gap-1.5 font-display font-bold text-amber-400">
+                    <span>🏁</span>
+                    <span>RACE GAME : RATIO</span>
+                    <span id="activeModeBadge" class="ml-1 px-2 py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/50 text-[10px] text-indigo-200 font-sans">
+                        ⚔️ Duel 2 Pemain
+                    </span>
+                </div>
+                <div id="raceCommentary" class="hidden md:block text-[11px] font-bold text-emerald-300 truncate max-w-md">
+                    Jawab 5 soal rasio dengan benar untuk mencapai garis FINISH!
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="toggleSound()" id="btnSoundToggle" title="Suara"
+                        class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[11px] font-bold text-slate-200 cursor-pointer">
+                        <span id="soundIcon">🔊</span>
+                    </button>
+                    <button type="button" onclick="resetRaceSamePlayers()" title="Ulangi Balapan"
+                        class="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-[11px] font-bold text-amber-300 cursor-pointer">
+                        🔄 Ulangi
+                    </button>
+                    <button type="button" onclick="backToMenu()" title="Kembali ke Menu"
+                        class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[11px] font-bold text-slate-200 cursor-pointer">
+                        🏠 Menu
+                    </button>
+                </div>
+            </div>
+
+            <!-- Baris Score Player 1 & Score Player 2 -->
+            <div class="grid grid-cols-2 gap-2 items-center pt-0.5">
+                <!-- Score Player 1 -->
+                <div class="flex items-center justify-between bg-blue-950/70 border-2 border-blue-500/60 px-2.5 py-1 rounded-xl">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div id="topP1Icon" class="w-7 h-7 shrink-0 flex items-center justify-center bg-blue-900/70 rounded-lg p-0.5"></div>
+                        <div class="truncate">
+                            <span class="text-[9px] md:text-[10px] font-extrabold uppercase text-blue-300 block leading-none">SCORE PLAYER 1</span>
+                            <span id="topP1Name" class="font-extrabold text-white text-xs md:text-sm truncate block">Pemain 1</span>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-2 flex items-center gap-2">
+                        <div>
+                            <span id="topP1Score" class="text-sm md:text-lg font-black text-amber-400 leading-none block">0 Poin</span>
+                            <span id="topP1Step" class="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.2 rounded-full">Langkah 0/5</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score Player 2 -->
+                <div class="flex items-center justify-between bg-rose-950/70 border-2 border-rose-500/60 px-2.5 py-1 rounded-xl">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div id="topP2Icon" class="w-7 h-7 shrink-0 flex items-center justify-center bg-rose-900/70 rounded-lg p-0.5"></div>
+                        <div class="truncate">
+                            <span class="text-[9px] md:text-[10px] font-extrabold uppercase text-rose-300 block leading-none">SCORE PLAYER 2</span>
+                            <span id="topP2Name" class="font-extrabold text-white text-xs md:text-sm truncate block">Pemain 2</span>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-2 flex items-center gap-2">
+                        <div>
+                            <span id="topP2Score" class="text-sm md:text-lg font-black text-amber-400 leading-none block">0 Poin</span>
+                            <span id="topP2Step" class="text-[10px] font-bold bg-rose-600 text-white px-1.5 py-0.2 rounded-full">Langkah 0/5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </header>
+
+        <!-- BAGIAN TENGAH (1/2 LAYAR): LAPANGAN RACE (CAR 1 & CAR 2 + GARIS FINISH) -->
+        <section class="h-[43%] md:h-[46%] w-full bg-emerald-900 flex flex-col justify-between relative overflow-hidden border-b-4 border-cyan-500/70 shrink-0">
+            
+            <!-- Tribun Penonton Atas -->
+            <div class="bg-slate-900/95 border-b border-slate-700 px-2 py-0.5 flex items-center justify-between shrink-0">
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1 shrink-0">
+                    <span>🏟️</span> TRIBUN UTARA
+                </span>
+                <div id="topGrandstand" class="flex-1 grid grid-cols-12 gap-0.5 mx-2 text-center text-xs"></div>
+                <span class="text-[10px] font-bold text-emerald-400 hidden sm:inline shrink-0">Misi: 5 Soal</span>
+            </div>
+
+            <!-- Lintasan Sirkuit Balap -->
+            <div class="flex-1 flex flex-col justify-center px-2 md:px-6 py-1 bg-gradient-to-b from-emerald-800 via-emerald-700 to-emerald-800 relative overflow-hidden">
+                
+                <div class="w-full h-full max-h-[210px] rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-900 flex flex-col">
+                    
+                    <!-- Kerb Atas -->
+                    <div class="h-2 w-full kerb-strip shrink-0"></div>
+
+                    <!-- Aspal 2 Jalur -->
+                    <div class="asphalt-track flex-1 relative w-full flex flex-col justify-between px-2 md:px-4 py-1">
+                        
+                        <!-- Header Pos 0 s.d Finish -->
+                        <div class="grid grid-cols-6 text-center text-[9px] md:text-[11px] font-extrabold uppercase text-slate-300 border-b border-slate-600/60 pb-0.5 z-10">
+                            <div class="text-emerald-400">START</div>
+                            <div>POS 1</div>
+                            <div>POS 2</div>
+                            <div>POS 3</div>
+                            <div>POS 4</div>
+                            <div class="text-amber-300">FINISH 🏁</div>
+                        </div>
+
+                        <!-- Jalur Car 1 & Car 2 -->
+                        <div class="relative flex-1 w-full flex flex-col justify-between">
+                            
+                            <!-- Garis Pembagi Pos & Garis FINISH Vertikal di Kanan -->
+                            <div class="absolute inset-0 grid grid-cols-6 pointer-events-none">
+                                <div class="border-r border-dashed border-emerald-400/30"></div>
+                                <div class="border-r border-dashed border-slate-500/30 flex items-center justify-center">
+                                    <span class="text-sm md:text-xl font-black text-slate-400/15">1</span>
+                                </div>
+                                <div class="border-r border-dashed border-slate-500/30 flex items-center justify-center">
+                                    <span class="text-sm md:text-xl font-black text-slate-400/15">2</span>
+                                </div>
+                                <div class="border-r border-dashed border-slate-500/30 flex items-center justify-center">
+                                    <span class="text-sm md:text-xl font-black text-slate-400/15">3</span>
+                                </div>
+                                <div class="border-r border-dashed border-slate-500/30 flex items-center justify-center">
+                                    <span class="text-sm md:text-xl font-black text-slate-400/15">4</span>
+                                </div>
+                                <!-- Area Garis Finish Vertikal -->
+                                <div class="relative flex items-center justify-start bg-amber-500/10">
+                                    <div class="h-full w-3.5 md:w-5 finish-line-strip border-x border-slate-950 shadow-lg"></div>
+                                    <div class="flex flex-col items-center justify-center ml-1.5 md:ml-3 leading-none font-display font-black text-[9px] md:text-xs text-amber-300 select-none">
+                                        <span>F</span>
+                                        <span>I</span>
+                                        <span>N</span>
+                                        <span>I</span>
+                                        <span>S</span>
+                                        <span>H</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- JALUR ATAS: CAR 1 -->
+                            <div class="relative flex-1 flex items-center border-b-2 border-dashed border-amber-400/60">
+                                <div class="z-10 flex items-center gap-1 bg-blue-950/90 border border-blue-400/50 px-2 py-0.5 rounded-lg shadow">
+                                    <span class="font-display font-extrabold text-xs md:text-sm text-blue-300">Car 1</span>
+                                    <span id="trackP1Name" class="hidden sm:inline text-[10px] font-bold text-slate-300 truncate max-w-[90px]">(Pemain 1)</span>
+                                </div>
+                                <div class="absolute left-16 right-16 h-0.5 bg-blue-400/30 pointer-events-none"></div>
+
+                                <!-- Token Mobil Car 1 -->
+                                <div id="p1CarToken" class="car-token absolute z-20 w-14 md:w-20 h-10 md:h-14 flex flex-col items-center justify-center" style="left: 2%;">
+                                    <div id="p1CarSvgContainer" class="w-12 md:w-16 h-7 md:h-10 car-idle drop-shadow-[0_4px_4px_rgba(0,0,0,0.7)]"></div>
+                                    <span id="p1CarTag" class="text-[9px] font-extrabold bg-blue-600 text-white px-1.5 rounded-full shadow border border-blue-300 -mt-1 truncate max-w-[75px]">
+                                        Car 1
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- JALUR BAWAH: CAR 2 -->
+                            <div class="relative flex-1 flex items-center">
+                                <div class="z-10 flex items-center gap-1 bg-rose-950/90 border border-rose-400/50 px-2 py-0.5 rounded-lg shadow">
+                                    <span class="font-display font-extrabold text-xs md:text-sm text-rose-300">Car 2</span>
+                                    <span id="trackP2Name" class="hidden sm:inline text-[10px] font-bold text-slate-300 truncate max-w-[90px]">(Pemain 2)</span>
+                                </div>
+                                <div class="absolute left-16 right-16 h-0.5 bg-rose-400/30 pointer-events-none"></div>
+
+                                <!-- Token Mobil Car 2 -->
+                                <div id="p2CarToken" class="car-token absolute z-20 w-14 md:w-20 h-10 md:h-14 flex flex-col items-center justify-center" style="left: 2%;">
+                                    <div id="p2CarSvgContainer" class="w-12 md:w-16 h-7 md:h-10 car-idle drop-shadow-[0_4px_4px_rgba(0,0,0,0.7)]"></div>
+                                    <span id="p2CarTag" class="text-[9px] font-extrabold bg-rose-600 text-white px-1.5 rounded-full shadow border border-rose-300 -mt-1 truncate max-w-[75px]">
+                                        Car 2
+                                    </span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Kerb Bawah -->
+                    <div class="h-2 w-full kerb-strip shrink-0"></div>
+
+                </div>
+
+            </div>
+
+            <!-- Tribun Penonton Bawah -->
+            <div class="bg-slate-900/95 border-t border-slate-700 px-2 py-0.5 flex items-center justify-between shrink-0">
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1 shrink-0">
+                    <span>🏟️</span> TRIBUN SELATAN
+                </span>
+                <div id="bottomGrandstand" class="flex-1 grid grid-cols-12 gap-0.5 mx-2 text-center text-xs"></div>
+                <span class="text-[10px] font-bold text-slate-400 hidden sm:inline shrink-0">Rasio Kelas 6</span>
+            </div>
+
+        </section>
+
+        <!-- BAGIAN BAWAH: 2 KOLOM SOAL BERDAMPINGAN (MASING-MASING 1/4 LAYAR) -->
+        <section class="flex-1 grid grid-cols-2 w-full overflow-hidden bg-slate-950 divide-x-2 divide-cyan-500/60">
+            
+            <!-- PANEL SOAL KIRI (PEMAIN 1) -->
+            <div class="h-full bg-gradient-to-b from-blue-950/40 via-slate-900 to-slate-950 flex flex-col justify-between p-2 md:p-3.5 overflow-y-auto">
+                <div>
+                    <!-- Header Soal Pemain 1 -->
+                    <div class="flex flex-wrap items-center justify-between gap-1 bg-blue-900/40 border border-blue-500/40 rounded-lg px-2 py-1 mb-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                            <span id="panelP1Name" class="font-extrabold text-blue-300 text-[11px] md:text-xs uppercase truncate max-w-[100px] md:max-w-[170px]">SOAL PEMAIN 1</span>
+                            <span id="p1TurnBadge" class="hidden text-[10px] font-extrabold bg-emerald-400 text-slate-950 px-1.5 py-0.2 rounded-full">
+                                Anggota #1
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div id="p1ProgressDots" class="hidden sm:flex items-center gap-1"></div>
+                            <span id="p1TopicBadge" class="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.2 rounded-full">
+                                Misi 1/5
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Kartu Teks Soal Pemain 1 -->
+                    <div id="p1QuestionCard" class="bg-slate-800/95 border-2 border-blue-500/40 rounded-xl p-2 md:p-3 shadow-md mb-2">
+                        <div class="flex items-center justify-between mb-0.5">
+                            <span id="p1CategoryLabel" class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">
+                                Menentukan Rasio
+                            </span>
+                            <span id="p1MissionNumber" class="text-[10px] font-bold text-slate-400">Pos 0 → 1</span>
+                        </div>
+                        <p id="p1QuestionText" class="text-xs sm:text-sm md:text-base font-bold text-white leading-snug min-h-[44px] md:min-h-[54px] flex items-center">
+                            Memuat soal...
+                        </p>
+                    </div>
+
+                    <!-- Pilihan Jawaban A-B (Kiri) dan C-D (Kanan) Sesuai Sketsa -->
+                    <div id="p1OptionsContainer" class="grid grid-cols-2 grid-rows-2 grid-flow-col gap-1.5 md:gap-2"></div>
+                </div>
+
+                <!-- Umpan Balik Pemain 1 -->
+                <div id="p1FeedbackBox" class="mt-1.5 py-1 px-2 rounded-lg bg-slate-800/80 border border-slate-700 text-center text-[10px] md:text-xs font-bold text-slate-300 truncate">
+                    Pilih A, B, C, atau D untuk memajukan Car 1!
+                </div>
+            </div>
+
+            <!-- PANEL SOAL KANAN (PEMAIN 2) -->
+            <div class="h-full bg-gradient-to-b from-rose-950/40 via-slate-900 to-slate-950 flex flex-col justify-between p-2 md:p-3.5 overflow-y-auto">
+                <div>
+                    <!-- Header Soal Pemain 2 -->
+                    <div class="flex flex-wrap items-center justify-between gap-1 bg-rose-900/40 border border-rose-500/40 rounded-lg px-2 py-1 mb-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
+                            <span id="panelP2Name" class="font-extrabold text-rose-300 text-[11px] md:text-xs uppercase truncate max-w-[100px] md:max-w-[170px]">SOAL PEMAIN 2</span>
+                            <span id="p2TurnBadge" class="hidden text-[10px] font-extrabold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">
+                                Anggota #1
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div id="p2ProgressDots" class="hidden sm:flex items-center gap-1"></div>
+                            <span id="p2TopicBadge" class="text-[10px] font-bold bg-rose-600 text-white px-2 py-0.2 rounded-full">
+                                Misi 1/5
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Kartu Teks Soal Pemain 2 -->
+                    <div id="p2QuestionCard" class="bg-slate-800/95 border-2 border-rose-500/40 rounded-xl p-2 md:p-3 shadow-md mb-2">
+                        <div class="flex items-center justify-between mb-0.5">
+                            <span id="p2CategoryLabel" class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">
+                                Menentukan Rasio
+                            </span>
+                            <span id="p2MissionNumber" class="text-[10px] font-bold text-slate-400">Pos 0 → 1</span>
+                        </div>
+                        <p id="p2QuestionText" class="text-xs sm:text-sm md:text-base font-bold text-white leading-snug min-h-[44px] md:min-h-[54px] flex items-center">
+                            Memuat soal...
+                        </p>
+                    </div>
+
+                    <!-- Pilihan Jawaban A-B (Kiri) dan C-D (Kanan) Sesuai Sketsa -->
+                    <div id="p2OptionsContainer" class="grid grid-cols-2 grid-rows-2 grid-flow-col gap-1.5 md:gap-2"></div>
+                </div>
+
+                <!-- Umpan Balik Pemain 2 -->
+                <div id="p2FeedbackBox" class="mt-1.5 py-1 px-2 rounded-lg bg-slate-800/80 border border-slate-700 text-center text-[10px] md:text-xs font-bold text-slate-300 truncate">
+                    Pilih A, B, C, atau D untuk memajukan Car 2!
+                </div>
+            </div>
+
+        </section>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. MODAL JUARA (WINNER POPUP)              -->
+    <!-- ========================================== -->
+    <div id="winnerModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-40 flex items-center justify-center p-4">
+        <div class="max-w-lg w-full bg-slate-900 border-4 border-amber-400 rounded-3xl p-6 md:p-8 text-center shadow-2xl relative overflow-hidden">
+            
+            <div class="w-full h-4 checkered-bg absolute top-0 left-0"></div>
+
+            <div class="mt-2 inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-400/20 border-2 border-amber-400 text-5xl mb-3 animate-bounce">
+                🏆
+            </div>
+
+            <h2 class="text-sm font-extrabold uppercase tracking-widest text-amber-400">GARIS FINISH TERCAPAI!</h2>
+            <h3 id="winnerNameDisplay" class="text-2xl md:text-4xl font-extrabold text-white mt-1 mb-2">
+                PEMAIN 1 JUARA!
+            </h3>
+            <p id="winnerSubtext" class="text-xs md:text-sm text-slate-300 mb-5">
+                Berhasil menyelesaikan 5 misi soal Rasio dengan hebat!
+            </p>
+
+            <!-- Preview Mobil Pemenang -->
+            <div class="flex justify-center mb-5">
+                <div id="winnerVehiclePreview" class="w-28 h-16 bg-slate-800 border border-slate-700 rounded-2xl p-2 flex items-center justify-center shadow-inner"></div>
+            </div>
+
+            <!-- Statistik Skor Akhir -->
+            <div class="grid grid-cols-2 gap-3 mb-6 text-left">
+                <div class="bg-blue-950/60 border border-blue-500/40 rounded-2xl p-3">
+                    <div id="modalP1Name" class="text-xs font-bold text-blue-300 truncate">Pemain 1</div>
+                    <div id="modalP1Stats" class="text-lg font-extrabold text-white mt-0.5">100 Poin</div>
+                    <div id="modalP1Accuracy" class="text-[11px] text-slate-400">Langkah: 5/5</div>
+                </div>
+                <div class="bg-rose-950/60 border border-rose-500/40 rounded-2xl p-3">
+                    <div id="modalP2Name" class="text-xs font-bold text-rose-300 truncate">Pemain 2</div>
+                    <div id="modalP2Stats" class="text-lg font-extrabold text-white mt-0.5">80 Poin</div>
+                    <div id="modalP2Accuracy" class="text-[11px] text-slate-400">Langkah: 4/5</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button type="button" onclick="resetRaceSamePlayers()" 
+                    class="btn-game flex-1 py-3.5 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-slate-950 font-extrabold text-sm uppercase tracking-wider cursor-pointer">
+                    🔄 Main Lagi (Soal Baru)
+                </button>
+                <button type="button" onclick="backToMenu()" 
+                    class="btn-game flex-1 py-3.5 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 font-extrabold text-sm uppercase tracking-wider cursor-pointer">
+                    🏠 Menu Utama
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LENGKAP                         -->
+    <!-- ========================================== -->
+    <script>
+        /* ----------------------------------------------------------
+         * 1. DATA KENDARAAN BALAP (SVG)
+         * ---------------------------------------------------------- */
+        const VEHICLES = [
+            {
+                id: 'f1_blue',
+                name: 'Jet F1 Biru',
+                svg: `<svg viewBox="0 0 120 60" class="w-full h-full">
+                    <rect x="6" y="10" width="12" height="28" rx="3" fill="#1e40af"/>
+                    <path d="M15 26 L95 22 L114 32 L114 42 L15 42 Z" fill="#3b82f6" stroke="#93c5fd" stroke-width="2"/>
+                    <path d="M45 14 L70 14 L82 26 L40 26 Z" fill="#1d4ed8"/>
+                    <circle cx="58" cy="21" r="6" fill="#fde047"/>
+                    <circle cx="30" cy="44" r="12" fill="#0f172a" stroke="#cbd5e1" stroke-width="3"/>
+                    <circle cx="30" cy="44" r="5" fill="#ef4444"/>
+                    <circle cx="92" cy="44" r="12" fill="#0f172a" stroke="#cbd5e1" stroke-width="3"/>
+                    <circle cx="92" cy="44" r="5" fill="#ef4444"/>
+                </svg>`
+            },
+            {
+                id: 'supercar_red',
+                name: 'Supercar Merah',
+                svg: `<svg viewBox="0 0 120 60" class="w-full h-full">
+                    <path d="M10 30 L28 16 L76 16 L108 30 L114 42 L8 42 Z" fill="#ef4444" stroke="#fca5a5" stroke-width="2"/>
+                    <path d="M32 19 L72 19 L88 29 L24 29 Z" fill="#38bdf8"/>
+                    <rect x="6" y="22" width="10" height="8" rx="2" fill="#991b1b"/>
+                    <circle cx="30" cy="43" r="12" fill="#0f172a" stroke="#facc15" stroke-width="3"/>
+                    <circle cx="90" cy="43" r="12" fill="#0f172a" stroke="#facc15" stroke-width="3"/>
+                </svg>`
+            },
+            {
+                id: 'monster_green',
+                name: 'Monster Hijau',
+                svg: `<svg viewBox="0 0 120 60" class="w-full h-full">
+                    <path d="M18 10 L75 10 L90 24 L108 26 L108 38 L14 38 Z" fill="#10b981" stroke="#6ee7b7" stroke-width="2"/>
+                    <rect x="48" y="14" width="24" height="12" rx="2" fill="#fef08a"/>
+                    <circle cx="32" cy="43" r="14" fill="#1e293b" stroke="#a3e635" stroke-width="4"/>
+                    <circle cx="88" cy="43" r="14" fill="#1e293b" stroke="#a3e635" stroke-width="4"/>
+                </svg>`
+            },
+            {
+                id: 'rocket_gold',
+                name: 'Roket Emas',
+                svg: `<svg viewBox="0 0 120 60" class="w-full h-full">
+                    <path d="M6 22 L18 30 L6 38 Z" fill="#f97316"/>
+                    <path d="M16 18 L85 18 Q116 30 85 42 L16 42 Z" fill="#f59e0b" stroke="#fef08a" stroke-width="2"/>
+                    <circle cx="65" cy="30" r="8" fill="#38bdf8" stroke="#fff" stroke-width="2"/>
+                    <circle cx="34" cy="45" r="10" fill="#0f172a" stroke="#fbbf24" stroke-width="3"/>
+                    <circle cx="84" cy="45" r="10" fill="#0f172a" stroke="#fbbf24" stroke-width="3"/>
+                </svg>`
+            },
+            {
+                id: 'cyber_purple',
+                name: 'Cyber Ungu',
+                svg: `<svg viewBox="0 0 120 60" class="w-full h-full">
+                    <polygon points="10,34 42,14 82,14 112,30 110,42 10,42" fill="#8b5cf6" stroke="#ddd6fe" stroke-width="2"/>
+                    <polygon points="44,17 78,17 95,28 30,28" fill="#22d3ee"/>
+                    <circle cx="30" cy="43" r="12" fill="#090d16" stroke="#c084fc" stroke-width="3"/>
+                    <circle cx="90" cy="43" r="12" fill="#090d16" stroke="#c084fc" stroke-width="3"/>
+                </svg>`
+            },
+            {
+                id: 'police_turbo',
+                name: 'Patroli Turbo',
+                svg: `<svg viewBox="0 0 120 60" class="w-full h-full">
+                    <rect x="50" y="9" width="16" height="6" rx="3" fill="#ef4444"/>
+                    <path d="M12 28 L30 15 L78 15 L108 28 L112 42 L10 42 Z" fill="#f8fafc" stroke="#334155" stroke-width="2"/>
+                    <rect x="38" y="28" width="44" height="12" fill="#1e293b"/>
+                    <path d="M34 18 L74 18 L86 27 L24 27 Z" fill="#38bdf8"/>
+                    <circle cx="30" cy="43" r="12" fill="#0f172a" stroke="#94a3b8" stroke-width="3"/>
+                    <circle cx="90" cy="43" r="12" fill="#0f172a" stroke="#94a3b8" stroke-width="3"/>
+                </svg>`
+            }
+        ];
+
+        /* ----------------------------------------------------------
+         * 2. DATABASE 40 SOAL RASIO KELAS 6 SD
+         * ---------------------------------------------------------- */
+        const QUESTION_DATABASE = [
+            // LEVEL 1: MENENTUKAN RASIO (10 SOAL)
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Di dalam keranjang terdapat 7 buah apel dan 9 buah jeruk. Rasio banyak buah apel terhadap jeruk adalah ...",
+                options: ["7 : 9", "9 : 7", "7 : 16", "9 : 16"],
+                answer: 0
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Kelas 6A memiliki 13 siswa laki-laki dan 17 siswa perempuan. Rasio siswa perempuan terhadap seluruh siswa di kelas adalah ...",
+                options: ["13 : 17", "17 : 13", "17 : 30", "13 : 30"],
+                answer: 2
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Budi mempunyai 5 pensil dan 8 buku tulis. Rasio banyak buku tulis terhadap pensil adalah ...",
+                options: ["5 : 8", "8 : 5", "5 : 13", "8 : 13"],
+                answer: 1
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Dalam sebuah kotak terdapat 11 kelereng merah dan 6 kelereng biru. Rasio kelereng merah terhadap seluruh kelereng adalah ...",
+                options: ["11 : 6", "6 : 11", "6 : 17", "11 : 17"],
+                answer: 3
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Ibu membeli 3 kg gula dan 5 kg beras. Rasio berat gula terhadap berat beras adalah ...",
+                options: ["3 : 5", "5 : 3", "3 : 8", "5 : 8"],
+                answer: 0
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Di halaman sekolah ada 4 pohon mangga dan 7 pohon pucuk merah. Rasio pohon pucuk merah terhadap pohon mangga adalah ...",
+                options: ["4 : 7", "7 : 4", "4 : 11", "7 : 11"],
+                answer: 1
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Seorang peternak memiliki 9 ekor sapi dan 14 ekor kambing. Rasio banyak sapi terhadap seluruh hewan ternak adalah ...",
+                options: ["9 : 14", "14 : 9", "9 : 23", "14 : 23"],
+                answer: 2
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Dalam 1 minggu (7 hari), Rina berlatih renang selama 2 hari dan sisanya libur. Rasio hari latihan terhadap hari libur adalah ...",
+                options: ["2 : 7", "7 : 2", "2 : 5", "5 : 2"],
+                answer: 2
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Sebuah tim cerdas cermat terdiri dari 2 siswa putra dan 3 siswa putri. Rasio seluruh anggota tim terhadap siswa putra adalah ...",
+                options: ["2 : 3", "3 : 2", "2 : 5", "5 : 2"],
+                answer: 3
+            },
+            {
+                category: "Menentukan Rasio",
+                level: 1,
+                q: "Di tempat parkir terdapat 8 sepeda dan 15 motor. Rasio banyak motor terhadap sepeda adalah ...",
+                options: ["8 : 15", "15 : 8", "8 : 23", "15 : 23"],
+                answer: 1
+            },
+
+            // LEVEL 2: MENYEDERHANAKAN RASIO (10 SOAL)
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Bentuk paling sederhana dari rasio 12 : 18 adalah ...",
+                options: ["2 : 3", "3 : 2", "4 : 6", "6 : 9"],
+                answer: 0
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Bentuk paling sederhana dari rasio 20 : 25 adalah ...",
+                options: ["2 : 5", "4 : 5", "5 : 4", "4 : 6"],
+                answer: 1
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Sederhanakan rasio 35 : 14 ke bentuk paling sederhana!",
+                options: ["2 : 5", "5 : 2", "7 : 2", "5 : 3"],
+                answer: 1
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Bentuk paling sederhana dari rasio 16 : 24 adalah ...",
+                options: ["2 : 3", "3 : 4", "4 : 6", "8 : 12"],
+                answer: 0
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Rasio 45 : 60 jika disederhanakan menjadi ...",
+                options: ["3 : 4", "4 : 3", "9 : 12", "5 : 6"],
+                answer: 0
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Bentuk paling sederhana dari rasio 27 : 36 adalah ...",
+                options: ["3 : 4", "4 : 3", "9 : 4", "2 : 3"],
+                answer: 0
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Rasio panjang pita 50 cm terhadap 1 meter (100 cm) dalam bentuk paling sederhana adalah ...",
+                options: ["50 : 1", "1 : 2", "2 : 1", "5 : 10"],
+                answer: 1
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Rasio waktu 30 menit terhadap 2 jam (120 menit) dalam bentuk paling sederhana adalah ...",
+                options: ["1 : 4", "4 : 1", "3 : 2", "1 : 2"],
+                answer: 0
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Bentuk paling sederhana dari rasio 42 : 28 adalah ...",
+                options: ["2 : 3", "3 : 2", "6 : 4", "7 : 4"],
+                answer: 1
+            },
+            {
+                category: "Menyederhanakan Rasio",
+                level: 2,
+                q: "Berat semangka 4.000 gram dan melon 2 kg (2.000 gram). Rasio paling sederhana semangka terhadap melon adalah ...",
+                options: ["2 : 1", "1 : 2", "4 : 2", "20 : 1"],
+                answer: 0
+            },
+
+            // LEVEL 3: KESAMAAN RASIO (10 SOAL)
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Rasio yang senilai dengan 3 : 4 adalah ...",
+                options: ["6 : 8", "6 : 12", "9 : 16", "12 : 15"],
+                answer: 0
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Jika 2 : 5 = n : 20, maka nilai n yang tepat adalah ...",
+                options: ["6", "8", "10", "12"],
+                answer: 1
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Jika 4 : 7 = 12 : p, maka nilai p yang benar adalah ...",
+                options: ["14", "18", "21", "28"],
+                answer: 2
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Manakah di bawah ini rasio yang senilai dengan 5 : 3?",
+                options: ["10 : 9", "15 : 6", "20 : 12", "25 : 20"],
+                answer: 2
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Diketahui kesamaan rasio 18 : 24 = 3 : m. Nilai m adalah ...",
+                options: ["4", "6", "8", "9"],
+                answer: 0
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Pasangan rasio berikut yang saling senilai (sama) adalah ...",
+                options: ["2 : 3 dan 4 : 9", "3 : 5 dan 9 : 15", "4 : 7 dan 8 : 21", "5 : 6 dan 10 : 18"],
+                answer: 1
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Lengkapi kesamaan rasio berikut: 7 : 9 = 21 : ...",
+                options: ["18", "24", "27", "36"],
+                answer: 2
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Rasio 40 : 50 senilai dengan rasio ...",
+                options: ["4 : 5", "5 : 4", "8 : 15", "2 : 5"],
+                answer: 0
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Jika k : 15 = 2 : 3, maka nilai k adalah ...",
+                options: ["5", "8", "10", "12"],
+                answer: 2
+            },
+            {
+                category: "Kesamaan Rasio",
+                level: 3,
+                q: "Resep minuman membutuhkan rasio sirup dan air 1 : 4. Jika memakai 3 gelas sirup, maka air yang dibutuhkan adalah ...",
+                options: ["7 gelas", "8 gelas", "12 gelas", "16 gelas"],
+                answer: 2
+            },
+
+            // LEVEL 4 & 5: PENERAPAN RASIO (10 SOAL)
+            {
+                category: "Penerapan Rasio",
+                level: 4,
+                q: "Rasio kelereng Adi dan Beni adalah 2 : 3. Jika Adi memiliki 10 kelereng, maka banyak kelereng Beni adalah ...",
+                options: ["12 butir", "15 butir", "18 butir", "20 butir"],
+                answer: 1
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 4,
+                q: "Rasio umur Kakak dan Adik adalah 5 : 3. Jika umur Kakak 15 tahun, berapa tahun umur Adik?",
+                options: ["6 tahun", "8 tahun", "9 tahun", "12 tahun"],
+                answer: 2
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 4,
+                q: "Perbandingan uang Siti dan Lani adalah 3 : 4. Jika jumlah uang mereka berdua Rp14.000, maka uang Siti adalah ...",
+                options: ["Rp4.000", "Rp6.000", "Rp8.000", "Rp10.000"],
+                answer: 1
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 4,
+                q: "Rasio banyak ayam dan bebek Pak Tono adalah 4 : 5. Jika jumlah seluruh ayam dan bebek adalah 27 ekor, maka banyak ayam adalah ...",
+                options: ["9 ekor", "12 ekor", "15 ekor", "18 ekor"],
+                answer: 1
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 4,
+                q: "Untuk membuat 1 loyang kue dibutuhkan rasio gula dan tepung 1 : 3. Jika Ibu menggunakan 150 gram gula, berapa tepung yang diperlukan?",
+                options: ["300 gram", "400 gram", "450 gram", "600 gram"],
+                answer: 2
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 5,
+                q: "Rasio buku cerita dan buku pelajaran di perpustakaan adalah 5 : 2. Jika selisih kedua jenis buku adalah 12 buah, banyak buku pelajaran adalah ...",
+                options: ["6 buah", "8 buah", "10 buah", "20 buah"],
+                answer: 1
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 5,
+                q: "Sebuah mobil memerlukan 2 liter bensin untuk menempuh jarak 24 km. Berapa liter bensin yang diperlukan untuk menempuh 60 km?",
+                options: ["4 liter", "5 liter", "6 liter", "8 liter"],
+                answer: 1
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 5,
+                q: "Rasio siswa yang gemar futsal dan basket adalah 4 : 3. Jika ada 18 siswa gemar basket, berapa siswa yang gemar futsal?",
+                options: ["20 siswa", "21 siswa", "24 siswa", "28 siswa"],
+                answer: 2
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 5,
+                q: "Perbandingan pohon mangga dan rambutan adalah 3 : 2. Jika jumlah kedua pohon 25 batang, maka banyak pohon mangga adalah ...",
+                options: ["10 batang", "12 batang", "15 batang", "18 batang"],
+                answer: 2
+            },
+            {
+                category: "Penerapan Rasio",
+                level: 5,
+                q: "Rasio pita merah dan pita putih adalah 7 : 4. Jika selisih panjang kedua pita 15 meter, maka panjang pita merah adalah ...",
+                options: ["20 meter", "28 meter", "35 meter", "45 meter"],
+                answer: 2
+            }
+        ];
+
+        /* ----------------------------------------------------------
+         * 3. STATE PERMAINAN & KONFIGURASI
+         * ---------------------------------------------------------- */
+        const TARGET_STEPS = 5;
+        const STEP_POSITIONS = ['2%', '19%', '36%', '53%', '70%', '84%'];
+
+        let soundEnabled = true;
+        let audioCtx = null;
+        let botTimer = null;
+
+        let gameState = {
+            mode: 'duel', // 'solo' | 'duel' | 'group'
+            botDifficulty: 'normal',
+            isPlaying: false,
+            p1: {
+                name: "Pemain 1",
+                vehicleIndex: 0,
+                step: 0,
+                score: 0,
+                attempts: 0,
+                memberCount: 5,
+                currentMember: 1,
+                locked: false,
+                currentQuestion: null,
+                usedIndices: []
+            },
+            p2: {
+                name: "Pemain 2",
+                vehicleIndex: 1,
+                step: 0,
+                score: 0,
+                attempts: 0,
+                memberCount: 5,
+                currentMember: 1,
+                locked: false,
+                currentQuestion: null,
+                usedIndices: []
+            }
+        };
+
+        /* ----------------------------------------------------------
+         * 4. SISTEM AUDIO (WEB AUDIO API) DENGAN ERROR GUARD
+         * ---------------------------------------------------------- */
+        function initAudio() {
+            try {
+                if (!audioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        audioCtx = new AudioContextClass();
+                    }
+                }
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch (e) {
+                // Abaikan jika browser memblokir audio otomatis
+            }
+        }
+
+        function playTone(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+                if (type === 'correct') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.08);
+                    osc.frequency.setValueAtTime(783.99, now + 0.16);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'wrong') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(130, now + 0.25);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.28);
+                } else if (type === 'start') {
+                    const notes = [440, 440, 880];
+                    notes.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        gain.gain.setValueAtTime(0.15, now + idx * 0.12);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.1);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.12);
+                        osc.stop(now + idx * 0.12 + 0.1);
+                    });
+                } else if (type === 'win') {
+                    const chord = [523.25, 659.25, 783.99, 1046.5];
+                    chord.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.45);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.1);
+                        osc.stop(now + idx * 0.1 + 0.45);
+                    });
+                }
+            } catch (e) {
+                // Abaikan error audio
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundIcon').textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        /* ----------------------------------------------------------
+         * 5. PEMILIHAN MODE PERMAINAN & KENDARAAN DI MENU AWAL
+         * ---------------------------------------------------------- */
+        function selectGameMode(mode) {
+            gameState.mode = mode;
+
+            const btnSolo = document.getElementById('modeBtnSolo');
+            const btnDuel = document.getElementById('modeBtnDuel');
+            const btnGroup = document.getElementById('modeBtnGroup');
+
+            const inactiveClass = "p-3 rounded-xl border-2 text-left transition flex items-center gap-3 cursor-pointer bg-slate-800/80 border-slate-700 opacity-85 hover:opacity-100";
+            btnSolo.className = inactiveClass;
+            btnDuel.className = inactiveClass;
+            btnGroup.className = inactiveClass;
+
+            const p1NameInput = document.getElementById('p1NameInput');
+            const p2NameInput = document.getElementById('p2NameInput');
+            const p1GroupConfig = document.getElementById('p1GroupConfig');
+            const p2GroupConfig = document.getElementById('p2GroupConfig');
+            const p2BotConfig = document.getElementById('p2BotConfig');
+
+            if (mode === 'solo') {
+                btnSolo.className = "p-3 rounded-xl border-2 text-left transition flex items-center gap-3 cursor-pointer bg-amber-500/25 border-amber-400 shadow-lg";
+                document.getElementById('p1SetupBadge').textContent = "Pemain (Kamu)";
+                document.getElementById('p1NameLabel').textContent = "Nama Siswa";
+                if (p1NameInput.value === "Kelompok 1") p1NameInput.value = "Pemain 1";
+
+                document.getElementById('p2SetupBadge').textContent = "Lawan Bot Komputer";
+                document.getElementById('p2NameLabel').textContent = "Nama Mobil Bot";
+                p2NameInput.value = "Bot Rasio 🤖";
+
+                p1GroupConfig.classList.add('hidden');
+                p2GroupConfig.classList.add('hidden');
+                p2BotConfig.classList.remove('hidden');
+
+                document.getElementById('ruleTextMode').innerHTML = "<strong>Mode Main Sendiri:</strong> Kamu beradu cepat menjawab 5 soal Rasio melawan <strong>Mobil Bot Komputer</strong>!";
+            } else if (mode === 'duel') {
+                btnDuel.className = "p-3 rounded-xl border-2 text-left transition flex items-center gap-3 cursor-pointer bg-indigo-600/30 border-indigo-400 shadow-lg";
+                document.getElementById('p1SetupBadge').textContent = "Pemain 1 (Kiri)";
+                document.getElementById('p1NameLabel').textContent = "Nama Pemain 1";
+                if (p1NameInput.value === "Kelompok 1") p1NameInput.value = "Pemain 1";
+
+                document.getElementById('p2SetupBadge').textContent = "Pemain 2 (Kanan)";
+                document.getElementById('p2NameLabel').textContent = "Nama Pemain 2";
+                if (p2NameInput.value === "Bot Rasio 🤖" || p2NameInput.value === "Kelompok 2") p2NameInput.value = "Pemain 2";
+
+                p1GroupConfig.classList.add('hidden');
+                p2GroupConfig.classList.add('hidden');
+                p2BotConfig.classList.add('hidden');
+
+                document.getElementById('ruleTextMode').innerHTML = "<strong>Mode Duel 2 Pemain:</strong> Dimainkan oleh <strong>2 Siswa</strong> secara bersamaan pada bilah layar masing-masing.";
+            } else if (mode === 'group') {
+                btnGroup.className = "p-3 rounded-xl border-2 text-left transition flex items-center gap-3 cursor-pointer bg-emerald-600/30 border-emerald-400 shadow-lg";
+                document.getElementById('p1SetupBadge').textContent = "Kelompok 1 (Kiri)";
+                document.getElementById('p1NameLabel').textContent = "Nama Kelompok 1";
+                if (p1NameInput.value === "Pemain 1") p1NameInput.value = "Kelompok 1";
+
+                document.getElementById('p2SetupBadge').textContent = "Kelompok 2 (Kanan)";
+                document.getElementById('p2NameLabel').textContent = "Nama Kelompok 2";
+                if (p2NameInput.value === "Pemain 2" || p2NameInput.value === "Bot Rasio 🤖") p2NameInput.value = "Kelompok 2";
+
+                p1GroupConfig.classList.remove('hidden');
+                p2GroupConfig.classList.remove('hidden');
+                p2BotConfig.classList.add('hidden');
+
+                document.getElementById('ruleTextMode').innerHTML = "<strong>Mode Berkelompok:</strong> Setiap anggota kelompok maju <strong>secara bergantian</strong> menjawab soal sesuai giliran anggota!";
+            }
+        }
+
+        function renderVehicleGrids() {
+            const p1Grid = document.getElementById('p1VehicleGrid');
+            const p2Grid = document.getElementById('p2VehicleGrid');
+            if (!p1Grid || !p2Grid) return;
+
+            p1Grid.innerHTML = '';
+            p2Grid.innerHTML = '';
+
+            VEHICLES.forEach((v, index) => {
+                // Kartu Kendaraan Pemain 1
+                const p1Selected = gameState.p1.vehicleIndex === index;
+                const btn1 = document.createElement('button');
+                btn1.type = 'button';
+                btn1.onclick = () => selectVehicle('p1', index);
+                btn1.className = `p-2 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+                    p1Selected 
+                        ? 'bg-blue-600/30 border-blue-400 shadow-md scale-105' 
+                        : 'bg-slate-800/70 border-slate-700 hover:border-blue-500/50 opacity-80 hover:opacity-100'
+                }`;
+                btn1.innerHTML = `
+                    <div class="w-12 h-7">${v.svg}</div>
+                    <span class="text-[10px] font-bold text-slate-200 truncate w-full text-center">${v.name}</span>
+                `;
+                p1Grid.appendChild(btn1);
+
+                // Kartu Kendaraan Pemain 2
+                const p2Selected = gameState.p2.vehicleIndex === index;
+                const btn2 = document.createElement('button');
+                btn2.type = 'button';
+                btn2.onclick = () => selectVehicle('p2', index);
+                btn2.className = `p-2 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+                    p2Selected 
+                        ? 'bg-rose-600/30 border-rose-400 shadow-md scale-105' 
+                        : 'bg-slate-800/70 border-slate-700 hover:border-rose-500/50 opacity-80 hover:opacity-100'
+                }`;
+                btn2.innerHTML = `
+                    <div class="w-12 h-7">${v.svg}</div>
+                    <span class="text-[10px] font-bold text-slate-200 truncate w-full text-center">${v.name}</span>
+                `;
+                p2Grid.appendChild(btn2);
+            });
+
+            document.getElementById('p1SelectedVehicleLabel').textContent = VEHICLES[gameState.p1.vehicleIndex].name;
+            document.getElementById('p2SelectedVehicleLabel').textContent = VEHICLES[gameState.p2.vehicleIndex].name;
+        }
+
+        function selectVehicle(playerKey, index) {
+            gameState[playerKey].vehicleIndex = index;
+            renderVehicleGrids();
+        }
+
+        function renderGrandstands() {
+            const emojis = ['🧒', '👦', '👧', '🧑', '🙋‍♂️', '🙋‍♀️', '🧢', '🎉', '🚩', '📣', '👏', '🤩'];
+            const topEl = document.getElementById('topGrandstand');
+            const bottomEl = document.getElementById('bottomGrandstand');
+            if (!topEl || !bottomEl) return;
+
+            topEl.innerHTML = '';
+            bottomEl.innerHTML = '';
+
+            for (let i = 0; i < 12; i++) {
+                const e1 = emojis[i % emojis.length];
+                const e2 = emojis[(i + 5) % emojis.length];
+
+                const span1 = document.createElement('div');
+                span1.className = 'spectator select-none';
+                span1.style.animationDelay = `${(i * 0.12).toFixed(2)}s`;
+                span1.textContent = e1;
+                topEl.appendChild(span1);
+
+                const span2 = document.createElement('div');
+                span2.className = 'spectator select-none';
+                span2.style.animationDelay = `${((12 - i) * 0.12).toFixed(2)}s`;
+                span2.textContent = e2;
+                bottomEl.appendChild(span2);
+            }
+        }
+
+        /* ----------------------------------------------------------
+         * 6. PENGACAKAN SOAL & RENDER PANEL SOAL (A-B KIRI, C-D KANAN)
+         * ---------------------------------------------------------- */
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function getNextQuestionForPlayer(playerKey) {
+            const player = gameState[playerKey];
+            const targetLevel = Math.min(player.step + 1, 5);
+
+            // Cari soal sesuai level langkah saat ini yang belum pernah keluar untuk pemain tersebut
+            let candidateIndices = [];
+            QUESTION_DATABASE.forEach((item, idx) => {
+                if (item.level === targetLevel && !player.usedIndices.includes(idx)) {
+                    candidateIndices.push(idx);
+                }
+            });
+
+            // Jika soal pada level tersebut sudah habis dipakai, ambil dari seluruh soal yang belum keluar
+            if (candidateIndices.length === 0) {
+                QUESTION_DATABASE.forEach((item, idx) => {
+                    if (!player.usedIndices.includes(idx)) {
+                        candidateIndices.push(idx);
+                    }
+                });
+            }
+
+            // Jika seluruh 40 soal sudah pernah keluar, reset daftar soal yang telah digunakan
+            if (candidateIndices.length === 0) {
+                player.usedIndices = [];
+                candidateIndices = QUESTION_DATABASE.map((_, idx) => idx);
+            }
+
+            const chosenIndex = candidateIndices[Math.floor(Math.random() * candidateIndices.length)];
+            player.usedIndices.push(chosenIndex);
+
+            const rawQ = QUESTION_DATABASE[chosenIndex];
+            const optionObjects = rawQ.options.map((optText, idx) => ({
+                text: optText,
+                isCorrect: idx === rawQ.answer
+            }));
+
+            return {
+                category: rawQ.category,
+                question: rawQ.q,
+                options: shuffleArray(optionObjects)
+            };
+        }
+
+        function renderPlayerProgressDots(playerKey) {
+            const container = document.getElementById(`${playerKey}ProgressDots`);
+            if (!container) return;
+            container.innerHTML = '';
+
+            const step = gameState[playerKey].step;
+            for (let i = 1; i <= TARGET_STEPS; i++) {
+                const dot = document.createElement('span');
+                if (i <= step) {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow';
+                } else if (i === step + 1) {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
+                } else {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+                }
+                container.appendChild(dot);
+            }
+        }
+
+        function updateTurnBadge(playerKey) {
+            const badge = document.getElementById(`${playerKey}TurnBadge`);
+            if (!badge) return;
+            const player = gameState[playerKey];
+
+            if (gameState.mode === 'group') {
+                badge.classList.remove('hidden');
+                badge.textContent = `👥 Giliran Anggota #${player.currentMember}`;
+            } else if (gameState.mode === 'solo' && playerKey === 'p2') {
+                badge.classList.remove('hidden');
+                badge.textContent = `🤖 Auto-Bot`;
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function loadNextQuestion(playerKey) {
+            const player = gameState[playerKey];
+            player.locked = false;
+
+            const qData = getNextQuestionForPlayer(playerKey);
+            player.currentQuestion = qData;
+
+            const missionNum = Math.min(player.step + 1, TARGET_STEPS);
+            document.getElementById(`${playerKey}TopicBadge`).textContent = `Misi ${missionNum}/${TARGET_STEPS}`;
+            document.getElementById(`${playerKey}CategoryLabel`).textContent = qData.category;
+            document.getElementById(`${playerKey}MissionNumber`).textContent = `Pos ${player.step} → ${player.step + 1}`;
+            document.getElementById(`${playerKey}QuestionText`).textContent = qData.question;
+
+            updateTurnBadge(playerKey);
+
+            const optionsContainer = document.getElementById(`${playerKey}OptionsContainer`);
+            optionsContainer.innerHTML = '';
+
+            const letters = ['A', 'B', 'C', 'D'];
+            const isBotPanel = (gameState.mode === 'solo' && playerKey === 'p2');
+            const accentClass = playerKey === 'p1' 
+                ? 'hover:border-blue-400 hover:bg-blue-950/60' 
+                : 'hover:border-rose-400 hover:bg-rose-950/60';
+
+            qData.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                if (isBotPanel) {
+                    btn.disabled = true;
+                    btn.className = `w-full text-left px-2 md:px-3 py-2 md:py-2.5 rounded-xl bg-slate-800/70 border-2 border-slate-700/80 text-slate-300 font-bold text-xs md:text-sm flex items-center gap-1.5 md:gap-2.5 opacity-85 cursor-default`;
+                } else {
+                    btn.className = `btn-game w-full text-left px-2 md:px-3 py-2 md:py-2.5 rounded-xl bg-slate-800 border-2 border-slate-700 ${accentClass} text-white font-bold text-xs md:text-sm flex items-center gap-1.5 md:gap-2.5 cursor-pointer`;
+                    btn.onclick = () => handleAnswer(playerKey, idx, btn);
+                }
+                btn.innerHTML = `
+                    <span class="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-slate-700 text-amber-300 font-extrabold flex items-center justify-center shrink-0 text-[11px] md:text-xs">
+                        ${letters[idx]}
+                    </span>
+                    <span class="leading-tight break-words">${opt.text}</span>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+
+            renderPlayerProgressDots(playerKey);
+
+            if (isBotPanel) {
+                scheduleBotMove();
+            }
+        }
+
+        function scheduleBotMove() {
+            if (botTimer) clearTimeout(botTimer);
+            if (!gameState.isPlaying || gameState.mode !== 'solo') return;
+
+            const diff = gameState.botDifficulty;
+            const delayMs = diff === 'easy' ? 10500 : (diff === 'hard' ? 5500 : 8000);
+            const accuracy = diff === 'easy' ? 0.68 : (diff === 'hard' ? 0.85 : 0.76);
+
+            const feedbackBox = document.getElementById('p2FeedbackBox');
+            feedbackBox.className = `mt-1.5 py-1 px-2 rounded-lg bg-amber-950/60 border border-amber-500/40 text-center text-[10px] md:text-xs font-bold text-amber-300 truncate`;
+            feedbackBox.textContent = `🤖 ${gameState.p2.name} sedang menghitung jawaban...`;
+
+            botTimer = setTimeout(() => {
+                if (!gameState.isPlaying || gameState.mode !== 'solo' || gameState.p2.locked) return;
+
+                const options = gameState.p2.currentQuestion.options;
+                const correctIndex = options.findIndex(o => o.isCorrect);
+                let chosenIndex = correctIndex;
+
+                if (Math.random() > accuracy) {
+                    const wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIndex);
+                    chosenIndex = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
+                }
+
+                const buttons = document.getElementById('p2OptionsContainer').querySelectorAll('button');
+                if (buttons[chosenIndex]) {
+                    handleAnswer('p2', chosenIndex, buttons[chosenIndex]);
+                }
+            }, delayMs);
+        }
+
+        /* ----------------------------------------------------------
+         * 7. PENANGANAN JAWABAN & PERGERAKAN MOBIL
+         * ---------------------------------------------------------- */
+        function handleAnswer(playerKey, selectedIdx, clickedBtn) {
+            const player = gameState[playerKey];
+            if (!gameState.isPlaying || player.locked) return;
+
+            player.locked = true;
+            player.attempts++;
+
+            const chosenOption = player.currentQuestion.options[selectedIdx];
+            const feedbackBox = document.getElementById(`${playerKey}FeedbackBox`);
+            const questionCard = document.getElementById(`${playerKey}QuestionCard`);
+            const carToken = document.getElementById(`${playerKey}CarToken`);
+
+            if (chosenOption.isCorrect) {
+                // JAWABAN BENAR: Mobil Maju 1 Langkah
+                playTone('correct');
+                player.step += 1;
+                player.score += 20;
+
+                if (gameState.mode === 'group') {
+                    player.currentMember = (player.currentMember % player.memberCount) + 1;
+                }
+
+                clickedBtn.className = `w-full text-left px-2 md:px-3 py-2 md:py-2.5 rounded-xl bg-emerald-600 border-2 border-emerald-300 text-white font-extrabold text-xs md:text-sm flex items-center gap-1.5 md:gap-2.5 shadow-lg`;
+                feedbackBox.className = `mt-1.5 py-1 px-2 rounded-lg bg-emerald-950/90 border border-emerald-400 text-center text-[10px] md:text-xs font-extrabold text-emerald-300 truncate`;
+                feedbackBox.textContent = `✅ BENAR! ${player.name} maju ke Pos ${player.step}!`;
+
+                carToken.style.left = STEP_POSITIONS[player.step];
+                carToken.classList.remove('car-boost');
+                void carToken.offsetWidth;
+                carToken.classList.add('car-boost');
+
+                updateScoreboardUI();
+                renderPlayerProgressDots(playerKey);
+                updateCommentary(`${player.name} menjawab benar dan melaju ke Pos ${player.step}! 🚀`);
+
+                if (player.step >= TARGET_STEPS) {
+                    finishRace(playerKey);
+                    return;
+                }
+
+                setTimeout(() => {
+                    if (!gameState.isPlaying) return;
+                    feedbackBox.className = `mt-1.5 py-1 px-2 rounded-lg bg-slate-800/80 border border-slate-700 text-center text-[10px] md:text-xs font-bold text-slate-300 truncate`;
+                    feedbackBox.textContent = gameState.mode === 'group'
+                        ? `Giliran Anggota #${player.currentMember} untuk menjawab!`
+                        : `Pilih A, B, C, atau D untuk maju 1 langkah!`;
+                    loadNextQuestion(playerKey);
+                }, 650);
+
+            } else {
+                // JAWABAN SALAH: Mobil Tetap di Tempat
+                playTone('wrong');
+                clickedBtn.className = `w-full text-left px-2 md:px-3 py-2 md:py-2.5 rounded-xl bg-rose-700 border-2 border-rose-300 text-white font-extrabold text-xs md:text-sm flex items-center gap-1.5 md:gap-2.5`;
+                
+                questionCard.classList.remove('shake-error');
+                void questionCard.offsetWidth;
+                questionCard.classList.add('shake-error');
+
+                if (gameState.mode === 'group') {
+                    player.currentMember = (player.currentMember % player.memberCount) + 1;
+                }
+
+                feedbackBox.className = `mt-1.5 py-1 px-2 rounded-lg bg-rose-950/90 border border-rose-400 text-center text-[10px] md:text-xs font-extrabold text-rose-300 truncate`;
+                feedbackBox.textContent = `❌ Salah! Mobil tetap di Pos ${player.step}. Soal diacak!`;
+
+                updateCommentary(`Jawaban ${player.name} belum tepat, mobil tetap di Pos ${player.step}.`);
+
+                setTimeout(() => {
+                    if (!gameState.isPlaying) return;
+                    feedbackBox.className = `mt-1.5 py-1 px-2 rounded-lg bg-slate-800/80 border border-slate-700 text-center text-[10px] md:text-xs font-bold text-slate-300 truncate`;
+                    feedbackBox.textContent = gameState.mode === 'group'
+                        ? `Giliran Anggota #${player.currentMember} untuk menjawab!`
+                        : `Pilih A, B, C, atau D untuk maju 1 langkah!`;
+                    loadNextQuestion(playerKey);
+                }, 850);
+            }
+        }
+
+        function updateScoreboardUI() {
+            document.getElementById('topP1Score').textContent = `${gameState.p1.score} Poin`;
+            document.getElementById('topP1Step').textContent = `Langkah ${gameState.p1.step}/${TARGET_STEPS}`;
+
+            document.getElementById('topP2Score').textContent = `${gameState.p2.score} Poin`;
+            document.getElementById('topP2Step').textContent = `Langkah ${gameState.p2.step}/${TARGET_STEPS}`;
+        }
+
+        function updateCommentary(text) {
+            const el = document.getElementById('raceCommentary');
+            if (el) el.textContent = text;
+        }
+
+        /* ----------------------------------------------------------
+         * 8. MULAI BALAPAN, SELESAI, DAN RESET
+         * ---------------------------------------------------------- */
+        function startGame() {
+            playTone('start');
+
+            const p1Input = document.getElementById('p1NameInput').value.trim();
+            const p2Input = document.getElementById('p2NameInput').value.trim();
+
+            if (gameState.mode === 'solo') {
+                gameState.p1.name = p1Input || "Siswa";
+                gameState.p2.name = p2Input || "Bot Rasio 🤖";
+                gameState.botDifficulty = document.getElementById('botDifficultySelect').value;
+            } else if (gameState.mode === 'group') {
+                gameState.p1.name = p1Input || "Kelompok 1";
+                gameState.p2.name = p2Input || "Kelompok 2";
+                gameState.p1.memberCount = parseInt(document.getElementById('p1MemberCount').value, 10) || 5;
+                gameState.p2.memberCount = parseInt(document.getElementById('p2MemberCount').value, 10) || 5;
+            } else {
+                gameState.p1.name = p1Input || "Pemain 1";
+                gameState.p2.name = p2Input || "Pemain 2";
+            }
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            setupRaceSession();
+        }
+
+        function setupRaceSession() {
+            stopConfetti();
+            if (botTimer) clearTimeout(botTimer);
+            document.getElementById('winnerModal').classList.add('hidden');
+
+            gameState.isPlaying = true;
+
+            ['p1', 'p2'].forEach(key => {
+                gameState[key].step = 0;
+                gameState[key].score = 0;
+                gameState[key].attempts = 0;
+                gameState[key].currentMember = 1;
+                gameState[key].locked = false;
+                gameState[key].usedIndices = [];
+            });
+
+            // Badge Mode Aktif di Header
+            const modeBadge = document.getElementById('activeModeBadge');
+            if (gameState.mode === 'solo') {
+                modeBadge.textContent = "🧑‍💻 Main Sendiri (vs Bot)";
+            } else if (gameState.mode === 'group') {
+                modeBadge.textContent = "👥 Mode Berkelompok";
+            } else {
+                modeBadge.textContent = "⚔️ Duel 2 Pemain";
+            }
+
+            // Pasang Visual Mobil & Nama Pemain
+            const v1 = VEHICLES[gameState.p1.vehicleIndex];
+            const v2 = VEHICLES[gameState.p2.vehicleIndex];
+
+            document.getElementById('topP1Name').textContent = gameState.p1.name;
+            document.getElementById('topP2Name').textContent = gameState.p2.name;
+            document.getElementById('topP1Icon').innerHTML = v1.svg;
+            document.getElementById('topP2Icon').innerHTML = v2.svg;
+
+            document.getElementById('panelP1Name').textContent = `SOAL ${gameState.p1.name.toUpperCase()}`;
+            document.getElementById('panelP2Name').textContent = `SOAL ${gameState.p2.name.toUpperCase()}`;
+
+            document.getElementById('trackP1Name').textContent = `(${gameState.p1.name})`;
+            document.getElementById('trackP2Name').textContent = `(${gameState.p2.name})`;
+
+            document.getElementById('p1CarSvgContainer').innerHTML = v1.svg;
+            document.getElementById('p2CarSvgContainer').innerHTML = v2.svg;
+            document.getElementById('p1CarTag').textContent = gameState.p1.name;
+            document.getElementById('p2CarTag').textContent = gameState.p2.name;
+
+            // Kembalikan Posisi Mobil ke Garis Start
+            document.getElementById('p1CarToken').style.left = STEP_POSITIONS[0];
+            document.getElementById('p2CarToken').style.left = STEP_POSITIONS[0];
+
+            updateScoreboardUI();
+            updateCommentary('Balapan dimulai! Jawab 5 soal rasio dengan benar untuk mencapai FINISH!');
+
+            loadNextQuestion('p1');
+            loadNextQuestion('p2');
+        }
+
+        function finishRace(winnerKey) {
+            gameState.isPlaying = false;
+            if (botTimer) clearTimeout(botTimer);
+            playTone('win');
+            startConfetti();
+
+            const winner = gameState[winnerKey];
+            const winnerVehicle = VEHICLES[winner.vehicleIndex];
+
+            document.getElementById('winnerNameDisplay').textContent = `${winner.name.toUpperCase()} JUARA!`;
+            document.getElementById('winnerSubtext').textContent = 
+                `Berhasil mencapai Garis Finish lebih dulu dengan menyelesaikan 5 misi soal Rasio!`;
+            document.getElementById('winnerVehiclePreview').innerHTML = winnerVehicle.svg;
+
+            document.getElementById('modalP1Name').textContent = gameState.p1.name;
+            document.getElementById('modalP1Stats').textContent = `${gameState.p1.score} Poin`;
+            document.getElementById('modalP1Accuracy').textContent = `Langkah: ${gameState.p1.step}/${TARGET_STEPS} (${gameState.p1.attempts} percobaan)`;
+
+            document.getElementById('modalP2Name').textContent = gameState.p2.name;
+            document.getElementById('modalP2Stats').textContent = `${gameState.p2.score} Poin`;
+            document.getElementById('modalP2Accuracy').textContent = `Langkah: ${gameState.p2.step}/${TARGET_STEPS} (${gameState.p2.attempts} percobaan)`;
+
+            setTimeout(() => {
+                document.getElementById('winnerModal').classList.remove('hidden');
+            }, 500);
+        }
+
+        function resetRaceSamePlayers() {
+            playTone('start');
+            setupRaceSession();
+        }
+
+        function backToMenu() {
+            stopConfetti();
+            if (botTimer) clearTimeout(botTimer);
+            gameState.isPlaying = false;
+            document.getElementById('winnerModal').classList.add('hidden');
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+        }
+
+        /* ----------------------------------------------------------
+         * 9. EFEK CONFETTI SAAT PEMAIN MENCAPAI FINISH
+         * ---------------------------------------------------------- */
+        let confettiAnimationId = null;
+        let confettiParticles = [];
+
+        function startConfetti() {
+            const canvas = document.getElementById('confettiCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const colors = ['#fbbf24', '#ef4444', '#3b82f6', '#10b981', '#a855f7', '#ec4899', '#22d3ee'];
+            confettiParticles = [];
+
+            for (let i = 0; i < 140; i++) {
+                confettiParticles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    w: Math.random() * 10 + 6,
+                    h: Math.random() * 6 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speedY: Math.random() * 3.5 + 2,
+                    speedX: Math.random() * 3 - 1.5,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: Math.random() * 8 - 4
+                });
+            }
+
+            function renderConfetti() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                confettiParticles.forEach(p => {
+                    p.y += p.speedY;
+                    p.x += p.speedX;
+                    p.rotation += p.rotationSpeed;
+
+                    if (p.y > canvas.height) {
+                        p.y = -20;
+                        p.x = Math.random() * canvas.width;
+                    }
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rotation * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                });
+
+                confettiAnimationId = requestAnimationFrame(renderConfetti);
+            }
+
+            if (confettiAnimationId) cancelAnimationFrame(confettiAnimationId);
+            renderConfetti();
+        }
+
+        function stopConfetti() {
+            if (confettiAnimationId) {
+                cancelAnimationFrame(confettiAnimationId);
+                confettiAnimationId = null;
+            }
+            const canvas = document.getElementById('confettiCanvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confettiCanvas');
+            if (canvas && confettiAnimationId) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+        });
+
+        /* ----------------------------------------------------------
+         * 10. INISIALISASI SAAT HALAMAN DIMUAT
+         * ---------------------------------------------------------- */
+        window.onload = function () {
+            renderVehicleGrids();
+            renderGrandstands();
+            selectGameMode('duel');
+        };
+    </script>
+</body>
+</html>
+```
